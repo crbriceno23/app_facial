@@ -16,7 +16,7 @@ st.set_page_config(
 
 # --- GESTIÓN DE RUTAS (COMPATIBILIDAD NUBE/LOCAL) ---
 # En Streamlit Cloud, el script corre en la raíz.
-ROOT_DIR = Path(_file_).parent
+ROOT_DIR = Path(__file__).parent
 IMG_FOLDER = ROOT_DIR / "emociones_img"
 INTEGRANTES_FOLDER = ROOT_DIR / "integrantes_img"
 
