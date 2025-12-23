@@ -11,7 +11,6 @@ st.set_page_config(
     page_title="Cyber-Vision Roldós: Los Onichan Web",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
 )
 
 # --- GESTIÓN DE RUTAS ---
@@ -28,10 +27,8 @@ TRADUCCIONES = {
 
 CHISTES = [
     "¿Qué le dice un jaguar a otro? ¡Jaguar you! 😂",
-    "¿Por qué los pájaros no usan Facebook? Porque ya tienen Twitter. 🐦",
     "¿Cuál es el colmo de un informático? Tener un 'bug' en la cama. 💻",
-    "¿Qué hace una abeja en el gimnasio? ¡Zum-ba! 🐝",
-    "Error 404: Chiste no encontrado. 🤖"
+    "¿Qué hace una abeja en el gimnasio? ¡Zum-ba! 🐝"
 ]
 
 MISIONES = [
@@ -41,168 +38,124 @@ MISIONES = [
     {"target": "angry", "task": "🎯 MISIÓN ONICHAN: ¡Muestra tu cara de guerra (Enojo)!"}
 ]
 
-if 'res_all' not in st.session_state: st.session_state.res_all = None
-if 'dom_emo' not in st.session_state: st.session_state.dom_emo = None
 if 'mission' not in st.session_state: st.session_state.mission = random.choice(MISIONES)
-if 'mission_result' not in st.session_state: st.session_state.mission_result = None
+if 'res_all' not in st.session_state: st.session_state.res_all = None
 if 'img_display' not in st.session_state: st.session_state.img_display = None
+if 'dom_emo' not in st.session_state: st.session_state.dom_emo = None
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS (MEJORADOS PARA ESTABILIDAD) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Roboto:wght@300;400&display=swap');
+    
     .stApp { background: #0a192f; color: #e6f1ff; font-family: 'Roboto', sans-serif; }
+    
     .main-title {
         font-family: 'Orbitron', sans-serif; color: #fff; text-align: center; font-size: 3rem;
-        text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe; animation: pulse 2s infinite;
+        text-shadow: 0 0 10px #00f2fe; margin-bottom: 0;
     }
-    .onichan-text {
-        font-family: 'Orbitron', sans-serif; color: #ffd700; text-align: center; 
-        font-size: 1.2rem; text-shadow: 0 0 10px #ffd700; margin-bottom: 20px;
+    
+    /* Contenedor estilo Cyber */
+    [data-testid="stVerticalBlock"] > div:has(div.cyber-card) {
+        background: rgba(10, 25, 47, 0.85);
+        border: 1px solid #00f2fe;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
-    .cyber-panel {
-        background: rgba(10, 25, 47, 0.85); border: 1px solid #00f2fe; border-radius: 10px;
-        padding: 20px; margin-bottom: 15px; box-shadow: 0 0 15px rgba(0, 242, 254, 0.1);
-        backdrop-filter: blur(5px);
-    }
-    @keyframes pulse {
-        0% { text-shadow: 0 0 10px #00f2fe; }
-        50% { text-shadow: 0 0 30px #00f2fe; }
-        100% { text-shadow: 0 0 10px #00f2fe; }
-    }
-    .bar-bg { background-color: #1a2a4e; border-radius: 10px; width: 100%; height: 12px; margin-bottom: 8px; border: 1px solid #303C55; }
+    
+    .bar-bg { background-color: #1a2a4e; border-radius: 10px; width: 100%; height: 12px; margin-bottom: 8px; }
     .bar-fill { background: linear-gradient(90deg, #00f2fe, #4c5fdc); height: 100%; border-radius: 10px; }
+    
     .stButton>button {
         width: 100%; border: 2px solid #00f2fe; background: transparent; color: #00f2fe;
-        border-radius: 10px; font-family: 'Orbitron', sans-serif; transition: 0.3s;
+        font-family: 'Orbitron', sans-serif;
     }
-    .stButton>button:hover { background: #00f2fe; color: #0a192f; box-shadow: 0 0 20px #00f2fe; }
-    img { border-radius: 8px; border: 1px solid #00f2fe; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE PROCESAMIENTO ---
+# --- FUNCION DE PROCESAMIENTO ---
 def procesar_imagen(foto_input):
     try:
         file_bytes = np.asarray(bytearray(foto_input.getvalue()), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, 1)
-        
-        results = DeepFace.analyze(
-            img, 
-            actions=['emotion'], 
-            enforce_detection=False, 
-            detector_backend='opencv', 
-            align=True
-        )
-        
-        if not results: return None, None, None
-
-        res = results[0]
-        reg = res['region']
-        cv2.rectangle(img, (reg['x'], reg['y']), (reg['x'] + reg['w'], reg['y'] + reg['h']), (0, 242, 254), 3)
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
-        return res, img_rgb, res['dominant_emotion']
+        results = DeepFace.analyze(img, actions=['emotion'], enforce_detection=False, detector_backend='opencv')
+        if results:
+            res = results[0]
+            reg = res['region']
+            cv2.rectangle(img, (reg['x'], reg['y']), (reg['x'] + reg['w'], reg['y'] + reg['h']), (0, 242, 254), 3)
+            return res, cv2.cvtColor(img, cv2.COLOR_BGR2RGB), res['dominant_emotion']
     except Exception as e:
-        st.error(f"Error: {e}")
-        return None, None, None
+        st.error(f"Error en análisis: {e}")
+    return None, None, None
 
-# --- INTERFAZ PRINCIPAL ---
+# --- UI PRINCIPAL ---
 st.markdown("<h1 class='main-title'>Jaime Roldós Aguilera</h1>", unsafe_allow_html=True)
-st.markdown("<p class='onichan-text'>Presentado por: Los Onichan 😎</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#ffd700; font-family:Orbitron;'>PRESENTADO POR: LOS ONICHAN 😎</p>", unsafe_allow_html=True)
 
-# Misión
-st.markdown(f"""
-    <div style="background: rgba(255, 215, 0, 0.05); border: 2px dashed #ffd700; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-        <h3 style="color:#ffd700; margin:0; font-family:'Orbitron'">{st.session_state.mission['task']}</h3>
-    </div>
-""", unsafe_allow_html=True)
+# Panel de Misión Permanente
+st.info(st.session_state.mission['task'])
 
-col_cam, col_res = st.columns([1, 1], gap="medium")
+col_cam, col_res = st.columns(2)
 
 with col_cam:
-    st.markdown("<div class='cyber-panel'><h4>📡 SCANNERS</h4>", unsafe_allow_html=True)
-    foto = st.camera_input("Captura tu rostro", label_visibility="collapsed")
+    st.subheader("📡 SCANNER BIOMÉTRICO")
+    # Añadimos una KEY única para evitar errores de duplicados
+    foto = st.camera_input("Captura", label_visibility="collapsed", key="onichan_cam")
     
     if foto:
-        if st.button("🔍 ANALIZAR DATOS BIOMÉTRICOS"):
-            with st.spinner('⚡ PROCESANDO...'):
-                res_data, processed_img, dom_emo = procesar_imagen(foto)
-                if res_data:
-                    st.session_state.res_all = res_data['emotion']
-                    st.session_state.dom_emo = dom_emo
-                    st.session_state.img_display = processed_img
-                    
-                    target = st.session_state.mission['target']
-                    score = st.session_state.res_all.get(target, 0)
-                    st.session_state.mission_result = "SUCCESS" if score > 60 else "FAIL"
-                    if st.session_state.mission_result == "SUCCESS": st.balloons()
-                else:
-                    st.warning("⚠️ No se detectó rostro.")
-    st.markdown("</div>", unsafe_allow_html=True)
+        if st.button("🔍 ANALIZAR ROSTRO", key="btn_analizar"):
+            res_data, processed_img, dom_emo = procesar_imagen(foto)
+            if res_data:
+                st.session_state.res_all = res_data['emotion']
+                st.session_state.dom_emo = dom_emo
+                st.session_state.img_display = processed_img
+            else:
+                st.error("No se detectó rostro.")
 
 with col_res:
     if st.session_state.res_all:
-        status_color = "#00ff00" if st.session_state.mission_result == "SUCCESS" else "#ff0000"
-        status_msg = "✅ MISIÓN COMPLETADA" if st.session_state.mission_result == "SUCCESS" else "❌ FALLO DE MISIÓN"
+        emo_detectada = st.session_state.dom_emo
+        score_mision = st.session_state.res_all.get(st.session_state.mission['target'], 0)
         
-        st.markdown(f"<div class='cyber-panel' style='border-color: {status_color};'><h2 style='color: {status_color}; text-align: center; margin:0;'>{status_msg}</h2></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='cyber-panel'><h4>ESTADO: {TRADUCCIONES.get(st.session_state.dom_emo, 'Desconocido').upper()}</h4>", unsafe_allow_html=True)
+        # Resultado de Misión
+        if score_mision > 60:
+            st.success("✅ ¡MISIÓN COMPLETADA!")
+            st.balloons()
+        else:
+            st.error("❌ MISIÓN FALLIDA - ¡INTÉNTALO OTRA VEZ!")
+        
+        st.write(f"### ESTADO: {TRADUCCIONES.get(emo_detectada, emo_detectada).upper()}")
         
         if st.session_state.img_display is not None:
             st.image(st.session_state.img_display, use_container_width=True)
-
-        st.markdown("---")
         
-        # --- LÓGICA CORREGIDA PARA LAS IMÁGENES DE EMOCIÓN ---
+        # Mostrar Imagen de la carpeta emociones_img
         if IMG_FOLDER.exists():
-            # Buscamos archivos que CONTENGAN el nombre de la emoción (ej: "happy")
             archivos = os.listdir(IMG_FOLDER)
-            img_emocion_encontrada = None
-            
-            for f in archivos:
-                if st.session_state.dom_emo.lower() in f.lower():
-                    img_emocion_encontrada = IMG_FOLDER / f
-                    break
-            
-            if img_emocion_encontrada:
-                st.image(str(img_emocion_encontrada), width=150, caption=f"Modo {TRADUCCIONES.get(st.session_state.dom_emo)}")
-            else:
-                st.info(f"💡 Pon una foto llamada '{st.session_state.dom_emo}.png' en la carpeta emociones_img para verla aquí.")
-        else:
-            st.error("Carpeta 'emociones_img' no encontrada.")
+            img_ref = next((f for f in archivos if emo_detectada.lower() in f.lower()), None)
+            if img_ref:
+                st.image(str(IMG_FOLDER / img_ref), width=150, caption="Tu Onichan interior")
 
-        st.write(f"🤖 *Humor Bot:* {random.choice(CHISTES)}")
-        
-        # Análisis Espectral
-        for emo_en, prob in st.session_state.res_all.items():
-            if prob > 0.1:
-                st.write(f"{TRADUCCIONES.get(emo_en, emo_en)}: {prob:.1f}%")
+        # Barras de Análisis
+        st.write("---")
+        for emo, prob in st.session_state.res_all.items():
+            if prob > 1:
+                st.write(f"{TRADUCCIONES.get(emo, emo)}: {prob:.1f}%")
                 st.markdown(f"<div class='bar-bg'><div class='bar-fill' style='width:{prob}%;'></div></div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("Esperando captura de datos...")
+        st.write("Esperando datos del scanner...")
 
-# --- FOOTER Y EQUIPO ---
-st.divider()
-st.markdown("<h3 style='text-align: center; font-family: Orbitron;'>EQUIPO: LOS ONICHAN</h3>", unsafe_allow_html=True)
+# --- EQUIPO ---
+st.write("---")
+st.markdown("<h3 style='text-align:center; font-family:Orbitron;'>EQUIPO: LOS ONICHAN</h3>", unsafe_allow_html=True)
+cols_equipo = st.columns(4)
 nombres = ["Carlos", "Macas", "Jadiel", "Herrera"]
-cols = st.columns(4)
 
-if INTEGRANTES_FOLDER.exists():
-    files_integrantes = os.listdir(INTEGRANTES_FOLDER)
-    for i, nombre in enumerate(nombres):
-        with cols[i]:
-            img_int = next((INTEGRANTES_FOLDER / f for f in files_integrantes if nombre.lower() in f.lower()), None)
-            if img_int: st.image(str(img_int), use_container_width=True)
-            st.markdown(f"<p style='text-align: center; color: #ffd700;'>{nombre.upper()}</p>", unsafe_allow_html=True)
-
-# Despedida y Video
-st.markdown("---")
-if INTEGRANTES_FOLDER.exists():
-    despedida_img = next((INTEGRANTES_FOLDER / f for f in os.listdir(INTEGRANTES_FOLDER) if "despedida" in f.lower()), None)
-    if despedida_img:
-        _, c_img, _ = st.columns([1,2,1])
-        with c_img:
-            st.image(str(despedida_img), use_container_width=True)
-            st.markdown('<div style="text-align: center; margin-top: 20px;"><a href="https://www.youtube.com/watch?v=He7dSGhyeHA" target="_blank" style="background: #00f2fe; color: #0a192f; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-family: \'Orbitron\';">📺 VER VIDEO DEL PROYECTO</a></div>', unsafe_allow_html=True)
+for i, nombre in enumerate(nombres):
+    with cols_equipo[i]:
+        if INTEGRANTES_FOLDER.exists():
+            img_int = next((f for f in os.listdir(INTEGRANTES_FOLDER) if nombre.lower() in f.lower()), None)
+            if img_int:
+                st.image(str(INTEGRANTES_FOLDER / img_int), use_container_width=True)
+        st.markdown(f"<p style='text-align:center;'>{nombre.upper()}</p>", unsafe_allow_html=True)
